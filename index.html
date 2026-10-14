@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wumbus' Garden - DSA Terminal Simulator</title>
+    <!-- assets/icons/ is not in the project tree, so the old logo.svg favicon was a 404; one working favicon remains. -->
+    <link rel="icon" type="image/x-icon" href="https://stardewvalleywiki.com/mediawiki/images/9/94/Large_Junimo_Hut.png">
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="app">
+
+        <!-- Top bar: brand + menu buttons (left), Well / Water / Energy / Coins (right) -->
+        <header class="topbar">
+            <div class="brand">
+                <img class="brand-logo" src="https://stardewvalleywiki.com/mediawiki/images/b/b8/Golden_Scroll.png" alt="">
+                <div class="brand-text">
+                    <h1>Wumbus' Garden</h1>
+                    <span class="version">v0.0.0</span>
+                </div>
+                <div class="menu-buttons">
+                    <button type="button" class="round-btn" onclick="openModal('mechanics-modal')" title="Mechanics" aria-label="Mechanics">
+                        <img src="https://stardewvalleywiki.com/mediawiki/images/d/df/Book_of_Mysteries.png" alt="">
+                    </button>
+                    <button type="button" class="round-btn" onclick="openModal('code-modal')" title="Module reference" aria-label="Module reference">
+                        <img src="https://stardewvalleywiki.com/mediawiki/images/1/15/Monster_Compendium.png" alt="">
+                    </button>
+                </div>
+            </div>
+
+            <div class="stat-strip">
+                <button type="button" id="well-btn" class="stat-card well-card" onclick="refillWaterAtWell()" title="Select the Water Can, then click the Well to refill (10 energy)">
+                    <img src="https://stardewvalleywiki.com/mediawiki/images/4/41/Well.png" alt="">
+                    <span class="well-text">
+                        <span class="well-name">Well</span>
+                        <span class="well-hint">Refill: 10 energy</span>
+                    </span>
+                </button>
+                <div class="stat-card" title="Water capacity">
+                    <img src="https://stardewvalleywiki.com/mediawiki/images/b/bf/Frozen_Geode.png" alt="">
+                    <span id="stat-bucket" class="stat-value">5/5</span>
+                    <span class="sr-only">Water capacity</span>
+                </div>
+                <div class="stat-card" title="Energy">
+                    <img src="https://stardewvalleywiki.com/mediawiki/images/archive/d/df/20191209011954%21Max_Energy.png" alt="">
+                    <span id="stat-energy" class="stat-value">100</span>
+                    <span class="sr-only">Energy</span>
+                </div>
+                <div class="stat-card" title="Coins">
+                    <img src="https://stardewvalleywiki.com/mediawiki/images/1/10/Gold.png" alt="">
+                    <span id="stat-coins" class="stat-value">200</span>
+                    <span class="sr-only">Coins</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Board: left rail | garden | right column -->
+        <main class="board">
+
+            <!-- Left: season + climate, inventory bar, tool bar -->
+            <section class="left-col" aria-label="Inventory and tools">
+                <div class="season-badge">
+                    <div class="season-main" id="stat-season">
+                        <img src="https://stardewvalleywiki.com/mediawiki/images/9/9c/Spring.png" alt="Spring">
+                        Spring 01
+                    </div>
+                    <div class="season-weather">
+                        <img id="weather-icon" src="https://stardewvalleywiki.com/mediawiki/images/2/26/SunAnimated.gif" alt="">
+                        <span id="stat-weather">Sunny</span>
+                    </div>
+                </div>
+
+                <div class="rail">
+                    <div class="bar bar-inventory" role="group" aria-label="Inventory">
+                        <div id="mc-inventory-grid" class="inventory-slots"></div>
+                    </div>
+
+                    <div class="bar bar-tools" role="group" aria-label="Tools">
+                        <button type="button" onclick="setTool('shovel')" id="tool-shovel" class="tool-btn" title="Trash Can: clear a tile (undo)" aria-label="Trash Can" aria-pressed="false">
+                            <img src="https://stardewvalleywiki.com/mediawiki/images/7/79/Garbage_Can.png" alt="">
+                        </button>
+                        <button type="button" onclick="setTool('hoe')" id="tool-hoe" class="tool-btn active" title="Hoe: till soil" aria-label="Hoe" aria-pressed="true">
+                            <img src="https://stardewvalleywiki.com/mediawiki/images/8/87/Hoe.png" alt="">
+                        </button>
+                        <button type="button" onclick="setTool('water')" id="tool-water" class="tool-btn" title="Watering Can" aria-label="Watering Can" aria-pressed="false">
+                            <img src="https://stardewvalleywiki.com/mediawiki/images/5/51/Watering_Can.png" alt="">
+                        </button>
+                        <button type="button" onclick="setTool('scythe')" id="tool-scythe" class="tool-btn" title="Scythe: harvest" aria-label="Scythe" aria-pressed="false">
+                            <img src="https://stardewvalleywiki.com/mediawiki/images/c/cd/Scythe.png" alt="">
+                        </button>
+                        <button type="button" onclick="setTool('plant')" id="tool-plant" class="tool-btn" title="Seeder: plant the selected seed" aria-label="Seeder" aria-pressed="false">
+                            <img src="https://stardewvalleywiki.com/mediawiki/images/c/c8/Milk_Pail.png" alt="">
+                        </button>
+                        <button type="button" onclick="setTool('fertilizer')" id="tool-fertilizer" class="tool-btn" title="Fertilizer: shield a crop" aria-label="Fertilizer" aria-pressed="false">
+                            <img src="https://stardewvalleywiki.com/mediawiki/images/5/5d/Tree_Fertilizer.png" alt="">
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Center: End Day tab attached to the 5x5 soil grid -->
+            <section class="garden-col" aria-label="Garden">
+                <div class="garden-head">
+                    <button type="button" class="end-day-btn" onclick="advanceNextDay()">
+                        <img src="https://stardewvalleywiki.com/mediawiki/images/archive/f/f4/20160305091000%21Solar_Essence.png" alt="">
+                        <span>End Day</span>
+                    </button>
+                    <span id="aoe-status" class="aoe-status">Tool Tier: Single Tile (1x1)</span>
+                </div>
+                <div id="soil-grid" class="soil-matrix-grid" role="grid" aria-label="Soil matrix, 5 by 5"></div>
+            </section>
+
+            <!-- Right: action log on top, Quests / Shop / Sell tabs below -->
+            <section class="right-col" aria-label="Log and town">
+                <div class="log-panel">
+                    <h2 class="panel-title">&gt;_ Execution &amp; Action Log</h2>
+                    <div id="output-console" class="console" role="log" aria-live="polite">
+                        Initializing WASM Python Engine...
+                    </div>
+                </div>
+
+                <div class="town">
+                    <div class="tabs" role="tablist" aria-label="Wumbus">
+                        <button type="button" role="tab" id="tab-quests" class="tab active" aria-selected="true" aria-controls="panel-quests" onclick="switchTab('quests')">Quests</button>
+                        <button type="button" role="tab" id="tab-shop" class="tab" aria-selected="false" aria-controls="panel-shop" onclick="switchTab('shop')" tabindex="-1">Shop</button>
+                        <button type="button" role="tab" id="tab-sell" class="tab" aria-selected="false" aria-controls="panel-sell" onclick="switchTab('sell')" tabindex="-1">Sell</button>
+                    </div>
+
+                    <div class="tab-body">
+                        <p id="active-item-indicator" class="selected-line">Selected: None</p>
+
+                        <!-- Quests -->
+                        <div id="panel-quests" class="tab-panel" role="tabpanel" aria-labelledby="tab-quests">
+                            <div class="npc">
+                                <div class="npc-portrait">
+                                    <img id="frog-avatar" src="https://static.wikia.nocookie.net/stardewvalley/images/0/0c/Gourmand_Frog.png/revision/latest/scale-to-width-down/88?cb=20250119051928" alt="Wumbus">
+                                    <span class="npc-name">Wumbus</span>
+                                </div>
+                                <div class="npc-info">
+                                    <div class="npc-title-row">
+                                        <span id="frog-title" class="npc-title">Wumbus</span>
+                                        <span id="frog-level" class="level-badge">Lvl 1</span>
+                                    </div>
+                                    <p id="frog-quest-desc" class="npc-quest">"Bring me 1x Parsnip for +25 EXP!"</p>
+                                    <div class="exp-track" aria-hidden="true">
+                                        <div id="frog-exp-bar" class="exp-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel-actions">
+                                <button type="button" class="btn btn-green" onclick="submitQuestCrop()">Give</button>
+                            </div>
+                        </div>
+
+                        <!-- Shop -->
+                        <div id="panel-shop" class="tab-panel" role="tabpanel" aria-labelledby="tab-shop" hidden>
+                            <p class="panel-copy">Fertilizer to shield your crops, and seed bags with seasonal surprises.</p>
+                            <div class="panel-actions">
+                                <button type="button" class="btn btn-gold" onclick="openModal('shop-modal')">
+                                    <img src="https://stardewvalleywiki.com/mediawiki/images/9/94/Traveling_Cart.png" alt="">
+                                    <span>Open shop</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sell -->
+                        <div id="panel-sell" class="tab-panel" role="tabpanel" aria-labelledby="tab-sell" hidden>
+                            <p class="panel-copy">Pick a harvested crop in your inventory, then sell it to Wumbus for coins.</p>
+                            <div class="panel-actions">
+                                <button type="button" class="btn btn-gold" onclick="sellHarvestedCrop()">
+                                    <img src="https://stardewvalleywiki.com/mediawiki/images/b/ba/Foraging.png" alt="">
+                                    <span>Sell crop</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="mechanics-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mechanics-title">
+        <div class="modal-card modal-md">
+            <div class="modal-header">
+                <h3 id="mechanics-title" class="modal-title">
+                    <img src="https://stardewvalleywiki.com/mediawiki/images/d/df/Book_of_Mysteries.png" alt="">
+                    <span>Garden Mechanics &amp; Rules</span>
+                </h3>
+                <button type="button" class="modal-close" onclick="closeModal('mechanics-modal')" aria-label="Close">
+                    <img src="https://stardewvalleywiki.com/mediawiki/images/9/91/Error-image-ingame.png" alt="">
+                </button>
+            </div>
+            <div class="modal-scroll rules">
+                <p><img src="https://stardewvalleywiki.com/mediawiki/images/archive/d/df/20191209011954%21Max_Energy.png" alt=""><span><strong>Energy &amp; bucket:</strong> Tools cost 5 energy. Refill your bucket at the Well by selecting the Watering Can and clicking the Well (costs 10 energy).</span></p>
+                <p><img src="https://stardewvalleywiki.com/mediawiki/images/5/51/Watering_Can.png" alt=""><span><strong>Watering:</strong> Crops need 4&ndash;7 growth days depending on the crop and must be watered daily. Unwatered crops wilt overnight.</span></p>
+                <p><img src="https://stardewvalleywiki.com/mediawiki/images/6/64/Moss.png" alt=""><span><strong>Fertilizer shield:</strong> Apply fertilizer to protect a crop from overnight disasters. It does not speed up growth or replace watering.</span></p>
+                <p><img src="https://stardewvalleywiki.com/mediawiki/images/1/10/Gold.png" alt=""><span><strong>Selling crops:</strong> Sell harvested crops to Wumbus for coins, or give them to complete quests for EXP.</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="code-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="code-title">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <h3 id="code-title" class="modal-title">
+                    <img src="https://stardewvalleywiki.com/mediawiki/images/1/15/Monster_Compendium.png" alt="">
+                    <span>Module Reference</span>
+                </h3>
+                <button type="button" class="modal-close" onclick="closeModal('code-modal')" aria-label="Close">
+                    <img src="https://stardewvalleywiki.com/mediawiki/images/9/91/Error-image-ingame.png" alt="">
+                </button>
+            </div>
+            <div class="code-body">
+                <label for="file-selector" class="field-label">Python module</label>
+                <select id="file-selector" class="select" onchange="updateCodeViewer()">
+                    <option value="oop_concepts.py">oop_concepts.py (Python OOP Concepts)</option>
+                    <option value="stack.py">stack.py (Stacks &amp; LIFO Undo System)</option>
+                    <option value="queue.py">queue.py (Queue &amp; FIFO Climate System)</option>
+                    <option value="matrix_grid.py">matrix_grid.py (2D List Matrix &amp; Grid Traversal)</option>
+                    <option value="hierarchical_tree.py">hierarchical_tree.py (Hierarchical Tree Quest System)</option>
+                    <option value="bst.py">bst.py (Binary Search Tree Crop Database)</option>
+                    <option value="hash.py">hash.py (Hash Table Inventory with Linear Probing)</option>
+                    <option value="graph.py">graph.py (Graph &amp; BFS/DFS Infestation Spreading)</option>
+                    <option value="sorting.py">sorting.py (Sorting Algorithms)</option>
+                    <option value="searching.py">searching.py (Searching Algorithms)</option>
+                    <option value="paradigms.py">paradigms.py (Greedy Seed Bags &amp; Dijkstra Pathfinding)</option>
+                    <option value="dyna_memo_dc.py">dyna_memo_dc.py (DP, Memoization, &amp; Divide-and-Conquer)</option>
+                </select>
+                <pre id="code-viewer" class="code-viewer">Loading module code...</pre>
+            </div>
+        </div>
+    </div>
+
+    <div id="shop-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+        <div class="modal-card modal-sm">
+            <div class="modal-header">
+                <h3 id="shop-title" class="modal-title">
+                    <img src="https://stardewvalleywiki.com/mediawiki/images/9/94/Traveling_Cart.png" alt="">
+                    <span>Wumbus' Mystery Shop</span>
+                </h3>
+                <button type="button" class="modal-close" onclick="closeModal('shop-modal')" aria-label="Close">
+                    <img src="https://stardewvalleywiki.com/mediawiki/images/9/91/Error-image-ingame.png" alt="">
+                </button>
+            </div>
+            <div class="shop-list">
+                <div class="shop-item">
+                    <img class="shop-item-icon" src="https://stardewvalleywiki.com/mediawiki/images/6/64/Moss.png" alt="">
+                    <div class="shop-item-text">
+                        <div class="shop-item-name">Plant Defense Fertilizer</div>
+                        <div class="shop-item-desc">Shields a crop against overnight disaster damage</div>
+                    </div>
+                    <button type="button" onclick="buyFertilizer(20)" class="btn btn-purple price-btn"><img src="https://stardewvalleywiki.com/mediawiki/images/1/10/Gold.png" alt=""><span>20</span></button>
+                </div>
+                <div class="shop-item">
+                    <img class="shop-item-icon" src="https://stardewvalleywiki.com/mediawiki/images/4/44/Potato_Seeds.png" alt="">
+                    <div class="shop-item-text">
+                        <div class="shop-item-name">Tier 1 Mystery Seed Bag</div>
+                        <div class="shop-item-desc">Common 70% / Uncommon 25% / Rare 5%</div>
+                    </div>
+                    <button type="button" onclick="buyMysteryBag(1, 15)" class="btn btn-gold price-btn"><img src="https://stardewvalleywiki.com/mediawiki/images/1/10/Gold.png" alt=""><span>15</span></button>
+                </div>
+                <div class="shop-item">
+                    <img class="shop-item-icon" src="https://stardewvalleywiki.com/mediawiki/images/2/2b/Wheat_Seeds.png" alt="">
+                    <div class="shop-item-text">
+                        <div class="shop-item-name">Tier 2 Mystery Seed Bag</div>
+                        <div class="shop-item-desc">Common 40% / Uncommon 45% / Rare 15%</div>
+                    </div>
+                    <button type="button" onclick="buyMysteryBag(2, 30)" class="btn btn-gold price-btn"><img src="https://stardewvalleywiki.com/mediawiki/images/1/10/Gold.png" alt=""><span>30</span></button>
+                </div>
+                <div class="shop-item">
+                    <img class="shop-item-icon" src="https://stardewvalleywiki.com/mediawiki/images/e/e0/Starfruit_Seeds.png" alt="">
+                    <div class="shop-item-text">
+                        <div class="shop-item-name">Tier 3 Mystery Seed Bag</div>
+                        <div class="shop-item-desc">Common 20% / Uncommon 50% / Rare 30%</div>
+                    </div>
+                    <button type="button" onclick="buyMysteryBag(3, 50)" class="btn btn-gold price-btn"><img src="https://stardewvalleywiki.com/mediawiki/images/1/10/Gold.png" alt=""><span>50</span></button>
+                </div>
+
+                <div class="shop-seasonal-section">
+                    <div id="shop-season-title" class="shop-season-header">
+                        <img src="https://stardewvalleywiki.com/mediawiki/images/9/9c/Spring.png" alt=""><span>Spring crops in seed bags</span>
+                    </div>
+                    <div id="shop-crop-list" class="shop-crop-grid">
+                        <!-- Dynamically rendered by main.js (renderShopSeasonalCrops) -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/pyodide-bridge.js"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/pyodide-utils.js"></script>
+    <script src="assets/js/inventory.js"></script>
+    <script src="assets/js/game-actions.js"></script>
+    <script src="assets/js/shop-quests.js"></script>
+    <script src="assets/js/ui-core.js"></script>
+</body>
+</html>
+
+
+
+
+
