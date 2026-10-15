@@ -5,51 +5,78 @@ function submitQuestCrop() {
         return;
     }
 
+    // Set temporary global Python variable for selected inventory key
+    py(`_selected_key = ${pyStr(selectedInventoryKey)}`);
+
     const res = pyJson(`
 import json
-try:
-    _s = climate_queue.get_current_season() if 'climate_queue' in globals() else "Spring"
-    _req_crop, _req_amt = quest_tree.get_current_req(_s)
-    
-    _item = inventory_hash.get(${pyStr(selectedInventoryKey)})
-    _is_crop = _item.get("type") == "crop" if _item else False
-    _count = _item.get("count", 0) if _item else 0
-    
-    _match = selectedInventoryKey.lower() == str(_req_crop).lower()
-    
-    if not _is_crop:
-        _status = "not_crop"
-    elif not _match:
-        _status = "wrong_crop"
-    elif _count < _req_amt:
-        _status = "not_enough"
-    else:
-        # Deduct requested crop count from inventory
-        for _ in range(_req_amt):
-            inventory_hash.consume(${pyStr(selectedInventoryKey)})
-            
-        _exp = getattr(quest_tree.current_node, 'exp_reward', 100)
-        _coins = getattr(quest_tree.current_node, 'coin_reward', 50)
-        _lvl_up = quest_tree.add_exp(_exp)
-        
-        _status = "success"
-        _res_data = {
-            "exp": _exp,
-            "coins": _coins,
-            "level_up": True if _lvl_up else False,
-            "level": getattr(quest_tree.current_node, 'level', 1),
-            "perk": getattr(quest_tree.current_node, 'perk', ''),
-            "req_crop": _req_crop,
-            "req_amt": _req_amt
-        }
-        
-    json.dumps({"status": _status, "data": _res_data if _status == "success" else {}, "req_crop": _req_crop, "req_amt": _req_amt})
-except Exception as _e:
-    json.dumps({"status": "error", "message": str(_e)})
+
+def _process_quest():
+    try:
+        # Get active season
+        s = climate_queue.get_current_season() if 'climate_queue' in globals() else "Spring"
+        s_clean = str(s).split()[0].strip()
+
+        # Get quest requirement
+        if hasattr(quest_tree, 'get_current_req'):
+            req_crop, req_amt = quest_tree.get_current_req(s_clean)
+        else:
+            req_crop = getattr(quest_tree.current_node, 'required_crop', 'Parsnip')
+            req_amt = getattr(quest_tree.current_node, 'required_amount', 1)
+
+        req_amt = int(req_amt)
+
+        # Lookup item in inventory hash
+        item = inventory_hash.get(_selected_key)
+        if not item or not isinstance(item, dict):
+            return json.dumps({"status": "not_crop"})
+
+        is_crop = (str(item.get("type", "")).lower() == "crop")
+        count = int(item.get("count", 0))
+
+        match = (str(_selected_key).strip().lower() == str(req_crop).strip().lower())
+
+        if not is_crop:
+            return json.dumps({"status": "not_crop"})
+        if not match:
+            return json.dumps({"status": "wrong_crop", "req_crop": str(req_crop), "req_amt": req_amt})
+        if count < req_amt:
+            return json.dumps({"status": "not_enough", "req_crop": str(req_crop), "req_amt": req_amt})
+
+        # Deduct items from hash
+        for _ in range(req_amt):
+            inventory_hash.consume(_selected_key)
+
+        exp = int(getattr(quest_tree.current_node, 'exp_reward', 150))
+        coins = int(getattr(quest_tree.current_node, 'coin_reward', 50))
+        lvl_up = bool(quest_tree.add_exp(exp))
+
+        new_node = quest_tree.current_node
+        return json.dumps({
+            "status": "success",
+            "data": {
+                "exp": exp,
+                "coins": coins,
+                "level_up": lvl_up,
+                "level": int(getattr(new_node, 'level', 1)),
+                "perk": str(getattr(new_node, 'perk', '')),
+                "req_crop": str(req_crop),
+                "req_amt": req_amt
+            }
+        })
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)})
+
+_process_quest()
     `);
 
-    if (!res || res.status === "error") {
-        logConsole("Error during quest submission.");
+    if (!res) {
+        logConsole("Error: Could not evaluate quest submission in Python.");
+        return;
+    }
+
+    if (res.status === "error") {
+        logConsole(`Error during quest submission: ${res.message || 'Unknown error'}`);
         return;
     }
 
@@ -72,7 +99,7 @@ except Exception as _e:
     if (data.level_up) {
         const levelBonus = 200 * Number(data.level);
         payout += levelBonus;
-        logConsole(`LEVEL UP! Wumbus leveled up! Unlocked: ${wumbusText(data.perk)}`);
+        logConsole(`LEVEL UP! Wumbus reached Level ${data.level}! Unlocked: ${wumbusText(data.perk)}`);
         logConsole(`Quest Completed! (+${data.exp} EXP, +${data.coins} Coins) + LEVEL BONUS (+${levelBonus} Coins)!`);
     } else {
         logConsole(`Quest Hand-in Successful! Received +${data.exp} EXP & +${data.coins} Coins!`);
