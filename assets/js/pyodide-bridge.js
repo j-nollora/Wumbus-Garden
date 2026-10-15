@@ -6,7 +6,7 @@ const moduleFiles = [
     'stack.py',
     'queue.py',
     'matrix_grid.py',
-    'hierarchical_tree.py',
+    'hierarchical_tree_and_traversals.py',
     'bst.py',
     'hash.py',
     'graph.py',
