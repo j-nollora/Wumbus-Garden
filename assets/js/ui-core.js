@@ -56,14 +56,16 @@ def _hud_safe(fn, default=None):
     except Exception:
         return default
 
+_season = _hud_safe(lambda: climate_queue.get_current_season(), "Spring")
 _node = _hud_safe(lambda: quest_tree.current_node)
+
 json.dumps({
-    "season": _hud_safe(lambda: climate_queue.get_current_season()),
+    "season": _season,
     "day": _hud_safe(lambda: climate_queue.current_day),
     "weather": _hud_safe(lambda: climate_queue.get_current_weather()),
     "aoe": _hud_safe(lambda: quest_tree.get_aoe_range(), 1),
     "max_bucket": _hud_safe(lambda: quest_tree.get_max_bucket(), 5),
-    "quest_desc": _hud_safe(lambda: quest_tree.get_current_quest_desc()),
+    "quest_desc": _hud_safe(lambda: quest_tree.get_current_quest_desc(_season)),
     "level": getattr(_node, "level", None),
     "title": getattr(_node, "title", None),
     "exp": _hud_safe(lambda: quest_tree.current_exp, 0),
