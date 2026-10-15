@@ -5,57 +5,77 @@ function submitQuestCrop() {
         return;
     }
 
-    const isCrop = py(`(lambda _i: _i.get("type") == "crop" if _i else False)(inventory_hash.get(${pyStr(selectedInventoryKey)}))`);
-    if (!isCrop) {
-        logConsole(`Error: ${selectedInventoryKey} is not a valid harvested crop!`);
-        return;
-    }
-
-    const reqCrop = py(`getattr(quest_tree.current_node, 'required_crop', None)`);
-    if (!reqCrop) {
-        logConsole("Wumbus: \"Ribbit! I have no more quests for you right now.\"");
-        return;
-    }
-    if (selectedInventoryKey.toLowerCase() !== String(reqCrop).toLowerCase()) {
-        logConsole(`Wumbus: "Ribbit! I do not want ${selectedInventoryKey} right now! Bring me ${reqCrop}!"`);
-        return;
-    }
-
     const res = pyJson(`
 import json
 try:
-    _node = quest_tree.current_node
-    _exp = getattr(_node, 'exp_reward', 100)
-    _coins = getattr(_node, 'coin_reward', 50)
-    _lvl_up = quest_tree.add_exp(_exp)
-    inventory_hash.consume(${pyStr(selectedInventoryKey)})
-    _new_node = quest_tree.current_node
-    _result = {
-        "exp": _exp,
-        "coins": _coins,
-        "level_up": True if _lvl_up else False,
-        "level": getattr(_new_node, 'level', 1),
-        "perk": getattr(_new_node, 'perk', '')
-    }
+    _s = climate_queue.get_current_season() if 'climate_queue' in globals() else "Spring"
+    _req_crop, _req_amt = quest_tree.get_current_req(_s)
+    
+    _item = inventory_hash.get(${pyStr(selectedInventoryKey)})
+    _is_crop = _item.get("type") == "crop" if _item else False
+    _count = _item.get("count", 0) if _item else 0
+    
+    _match = selectedInventoryKey.lower() == str(_req_crop).lower()
+    
+    if not _is_crop:
+        _status = "not_crop"
+    elif not _match:
+        _status = "wrong_crop"
+    elif _count < _req_amt:
+        _status = "not_enough"
+    else:
+        # Deduct requested crop count from inventory
+        for _ in range(_req_amt):
+            inventory_hash.consume(${pyStr(selectedInventoryKey)})
+            
+        _exp = getattr(quest_tree.current_node, 'exp_reward', 100)
+        _coins = getattr(quest_tree.current_node, 'coin_reward', 50)
+        _lvl_up = quest_tree.add_exp(_exp)
+        
+        _status = "success"
+        _res_data = {
+            "exp": _exp,
+            "coins": _coins,
+            "level_up": True if _lvl_up else False,
+            "level": getattr(quest_tree.current_node, 'level', 1),
+            "perk": getattr(quest_tree.current_node, 'perk', ''),
+            "req_crop": _req_crop,
+            "req_amt": _req_amt
+        }
+        
+    json.dumps({"status": _status, "data": _res_data if _status == "success" else {}, "req_crop": _req_crop, "req_amt": _req_amt})
 except Exception as _e:
-    _result = {"error": str(_e)}
-json.dumps(_result, default=str)
+    json.dumps({"status": "error", "message": str(_e)})
     `);
 
-    if (!res || res.error) {
-        logConsole(`Error: something went wrong during Python quest evaluation.${res && res.error ? ' (' + res.error + ')' : ''}`);
+    if (!res || res.status === "error") {
+        logConsole("Error during quest submission.");
         return;
     }
 
-    let payout = Number(res.coins) || 0;
+    if (res.status === "not_crop") {
+        logConsole(`Error: ${selectedInventoryKey} is not a valid harvested crop!`);
+        return;
+    }
+    if (res.status === "wrong_crop") {
+        logConsole(`Wumbus: "Ribbit! I do not want ${selectedInventoryKey}! Bring me ${res.req_amt}x ${res.req_crop}!"`);
+        return;
+    }
+    if (res.status === "not_enough") {
+        logConsole(`Wumbus: "Ribbit! You don't have enough! I need ${res.req_amt}x ${res.req_crop}!"`);
+        return;
+    }
 
-    if (res.level_up) {
-        const levelBonus = 200 * (Number(res.level) || 1);
+    const data = res.data;
+    let payout = Number(data.coins) || 0;
+
+    if (data.level_up) {
+        const levelBonus = 200 * Number(data.level);
         payout += levelBonus;
-        logConsole(`LEVEL UP! Wumbus leveled up! Unlocked: ${wumbusText(res.perk)}`);
-        logConsole(`Received Quest Reward (+${res.exp} EXP, +${res.coins} Coins) + LEVEL BONUS (+${levelBonus} Coins)!`);
+        logConsole(`LEVEL UP! Wumbus leveled up! Unlocked: ${wumbusText(data.perk)}`);
+        logConsole(`Quest Completed! (+${data.exp} EXP, +${data.coins} Coins) + LEVEL BONUS (+${levelBonus} Coins)!`);
     } else {
-        logConsole(`Quest hand-in successful! Received +${res.exp} EXP & +${res.coins} Coins!`);
+        logConsole(`Quest Hand-in Successful! Received +${data.exp} EXP & +${data.coins} Coins!`);
     }
 
     addCoins(payout);
