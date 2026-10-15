@@ -27,7 +27,7 @@ function cropImg(name, cls = '', alt = '') {
 
 function refillWaterAtWell() {
     if (activeTool !== 'water') {
-        logConsole("Warning: select the Watering Can before clicking the Well!");
+        logConsole("Equip watering can first.");
         return;
     }
     if (userBucket >= maxBucket) {
@@ -35,14 +35,19 @@ function refillWaterAtWell() {
         return;
     }
     if (userEnergy < WELL_ENERGY_COST) {
-        logConsole(`Error: need ${WELL_ENERGY_COST} Energy to refill water at the Well!`);
+        logConsole(`Refill requires ${WELL_ENERGY_COST} Energy!`);
         return;
     }
     userEnergy -= WELL_ENERGY_COST;
     userBucket = maxBucket;
     syncBucketToPython();
-    logConsole(`Refilled watering can to ${maxBucket}L at the Well! (-${WELL_ENERGY_COST} Energy)`);
+    logConsole(`Successfully refilled watering can(-${WELL_ENERGY_COST} Energy)`);
     updateStatusUI();
+
+    logPythonTrace("Refilled Water Can at Well", [
+        { file: "matrix_grid.py", fn: "grid.bucket_level = max_bucket", dsa: "Direct Attribute Mutation" },
+        { file: "hierarchical_tree_and_traversals.py", fn: "quest_tree.get_max_bucket()", dsa: "Dynamic Level Threshold Calculation" }
+    ]);
 }
 
 function handleTileClick(r, c) {
@@ -82,12 +87,16 @@ function executeToolOnTile(r, c) {
         const ok = py(`grid.till_soil(${r}, ${c})`);
         if (ok) {
             logConsole(`Tilled soil at tile [${r}, ${c}]`);
+            logPythonTrace("Till Soil Action", [
+                { file: "matrix_grid.py", fn: "grid.till_soil(r, c)", dsa: "2D Array Indexing O(1)" }
+            ]);
             return true;
         }
 
     } else if (activeTool === 'water') {
         if (userBucket <= 0) {
             logConsole("Error: Watering Can is empty (0 L)! Click the Well to refill.");
+            
             aoeAborted = true;
             return false;
         }
@@ -95,6 +104,9 @@ function executeToolOnTile(r, c) {
         if (ok) {
             userBucket -= 1;
             logConsole(`Watered tile [${r}, ${c}] (-1L Water)`);
+            logPythonTrace("Watered Plant / Tile", [
+                { file: "matrix_grid.py", fn: "grid.water_soil(r, c)", dsa: "2D Matrix Tile State Mutation" }
+            ]);
             return true;
         }
 
@@ -120,6 +132,11 @@ grid.plant_seed(${r}, ${c}, _crop) if _crop is not None else False
         if (planted) {
             consumeItem(selectedInventoryKey);
             logConsole(`Planted ${cropKey} at tile [${r}, ${c}]`);
+            logPythonTrace("Planted Seed", [
+                { file: "oop_concepts.py", fn: "CROP_DATABASE.get(cropKey)", dsa: "Dictionary Key Lookup" },
+                { file: "matrix_grid.py", fn: "grid.plant_seed(r, c, crop)", dsa: "2D Matrix Tile Object Insertion" },
+                { file: "hash.py", fn: "inventory_hash.consume(seed)", dsa: "Linear Probing Hash Table Consumption" }
+            ]);
             clearSelectionIfEmpty();
             return true;
         }
@@ -142,6 +159,10 @@ grid.plant_seed(${r}, ${c}, _crop) if _crop is not None else False
         if (applied) {
             consumeItem(selectedInventoryKey);
             logConsole(`Applied fertilizer defense shield to tile [${r}, ${c}]!`);
+            logPythonTrace("Applied Fertilizer Defense Shield", [
+                { file: "matrix_grid.py", fn: "grid.apply_fertilizer(r, c)", dsa: "Tile Attribute Shield Mutation" },
+                { file: "hash.py", fn: "inventory_hash.consume(fertilizer)", dsa: "Hash Table Deduction" }
+            ]);
             clearSelectionIfEmpty();
             return true;
         }
@@ -172,6 +193,10 @@ json.dumps({
         } else {
             logConsole(`Warning: there is nothing to harvest at tile [${r}, ${c}]!`);
         }
+        logPythonTrace("Harvest Crop Action", [
+            { file: "matrix_grid.py", fn: "grid.harvest_crop(r, c)", dsa: "2D Array State Mutation" },
+            { file: "hash.py", fn: "inventory_hash.add(crop_name, item)", dsa: "Hash Table Insertion" }
+        ]);
 
     } else if (activeTool === 'shovel') {
         const result = pyJson(`
@@ -192,6 +217,10 @@ json.dumps({"removed": _removed})
 
         if (result && result.removed) {
             logConsole(`Cleared ${result.removed} from tile [${r}, ${c}]!`);
+            logPythonTrace("Trash Can (Tile Revert)", [
+                { file: "matrix_grid.py", fn: "grid.get_tile(r, c)", dsa: "2D List Matrix Lookup O(1)" },
+                { file: "stack.py", fn: "action_stack.push(revert_data)", dsa: "LIFO Action Stack Tracking" }
+            ]);
             return true;
         }
     }
@@ -220,13 +249,22 @@ json.dumps({"disaster": _disaster, "name": _name})
     const gridEl = document.getElementById('soil-grid');
 
     if (night.disaster && night.name) {
-        logConsole(`NIGHT DISASTER ALERT: A severe [${night.name}] struck your field! Shielded crops absorbed damage!`);
+        logConsole(`NIGHT DISASTER ALERT: A severe ${night.name} struck your field! Shielded crops absorbed damage!`);
+        logPythonTrace(`Night Disaster Struck: ${night.name}`, [
+            { file: "queue.py", fn: "climate_queue.advance_day(grid)", dsa: "FIFO Queue Weather & Seasonal Cycling" },
+            { file: "matrix_grid.py", fn: "grid.process_day_transition(season, weather)", dsa: "2D Matrix Grid Traversal O(R*C)" },
+            { file: "matrix_grid.py", fn: "Disaster Damage Calculation & Shield Check", dsa: "Probabilistic Random Roll & Object HP Deduction" }
+        ]);
         if (gridEl) {
             gridEl.classList.add('disaster-blink');
             setTimeout(() => gridEl.classList.remove('disaster-blink'), 3000);
         }
     } else {
         logConsole("Advanced to Next Day! Energy restored. Unwatered or out-of-season crops wilted!");
+        logPythonTrace("Advanced Day Transition", [
+            { file: "queue.py", fn: "climate_queue.advance_day(grid)", dsa: "FIFO Queue Advancement" },
+            { file: "matrix_grid.py", fn: "grid.process_day_transition(season, weather)", dsa: "2D Matrix Traversal & Growth Check" }
+        ]);
     }
 
     updateStatusUI();

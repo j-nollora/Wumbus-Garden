@@ -256,7 +256,7 @@ select:focus-visible,
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 6px;   
 }
 
 .bar-tools {
@@ -342,10 +342,17 @@ select:focus-visible,
 
 .garden-head {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.garden-foot {
+    display: flex;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
-    margin-bottom: -3px;
+    margin-top: -3px;
     position: relative;
     z-index: 1;
 }
@@ -360,16 +367,21 @@ select:focus-visible,
     font-size: 1.1rem;
     background: var(--rose);
     border: 3px solid var(--ink);
-    border-bottom: 0;
-    border-radius: 14px 14px 0 0;
-    transition: background-color 0.1s ease;
+    border-top: 0;               /* Attached smoothly underneath soil grid frame */
+    border-radius: 0 0 14px 14px;
+    transition: background-color 0.1s ease, transform 0.1s ease;
 }
 
+.end-day-btn:hover {
+    background: var(--rose-deep);
+}
 .end-day-btn img { width: 26px; height: 26px; }
-.end-day-btn:hover { background: var(--rose-deep); }
+.end-day-btn:active {
+    transform: translateY(1px);
+}
 
 .aoe-status {
-    padding-bottom: 8px;
+    padding-top: 6px;
     font-size: 0.78rem;
     color: #4a5a4c;
 }
@@ -382,7 +394,7 @@ select:focus-visible,
     padding: 12px;
     background: var(--frame);
     border: 3px solid var(--ink);
-    border-radius: 0 16px 16px 16px;
+    border-radius: 16px 16px 0 0;
     width: 100%;
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
@@ -827,4 +839,25 @@ select:focus-visible,
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; }
     .soil-matrix-grid.disaster-blink { animation: none; border-color: #ef4444; }
+}
+
+/* Horizontal Action Log Banner above Soil Grid */
+.action-banner-log {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;       /* Right-aligns log text */
+    text-align: right;
+    border: none;
+    background: transparent;
+    padding: 2px 4px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #2f1d13;              /* Ink color matching frame */
+    line-height: 1.25;
+    white-space: normal;
+    word-break: normal;
+    text-wrap: balance;          /* Dynamic word balancing */
+    width: 100%;
 }

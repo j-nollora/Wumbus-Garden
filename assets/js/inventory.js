@@ -142,12 +142,12 @@ function selectInventoryItem(itemKey) {
 
     if (lowerKey.includes('fertilizer')) {
         setTool('fertilizer', true);
-        logConsole(`Selected ${itemKey}. Click on a tile to apply fertilizer!`);
+        logConsole(`Click on a tile to apply!`);
     } else if (lowerKey.includes('seed')) {
         setTool('plant', true);
-        logConsole(`Selected ${itemKey}. Click on a tilled tile to plant!`);
+        logConsole(`Click on a tilled tile to plant!`);
     } else {
-        logConsole(`Selected ${itemKey} (Harvested Crop).`);
+        logConsole(`Selected ${itemKey}.`);
     }
 
     renderMinecraftHotbar();

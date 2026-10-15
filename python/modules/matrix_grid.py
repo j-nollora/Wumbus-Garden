@@ -123,10 +123,10 @@ class SoilMatrixGrid:
 
         # Disasters with specific damage ranges
         disaster_specs = {
-            "The Meteorite Strike": (60, 80),
-            "The Alien Escape": (45, 65),
-            "The Green Rain Windstorm": (30, 50),
-            "The Earthquake": (20, 40)
+            "Meteorite Strike": (60, 80),
+            "Alien Escape": (45, 65),
+            "Green Rain Windstorm": (30, 50),
+            "Earthquake": (20, 40)
         }
 
         # 35% chance of overnight disaster

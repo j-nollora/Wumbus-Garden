@@ -103,6 +103,12 @@ _process_quest()
         logConsole(`Quest Completed! (+${data.exp} EXP, +${data.coins} Coins) + LEVEL BONUS (+${levelBonus} Coins)!`);
     } else {
         logConsole(`Quest Hand-in Successful! Received +${data.exp} EXP & +${data.coins} Coins!`);
+        logPythonTrace("Quest Submission Hand-In", [
+            { file: "queue.py", fn: "climate_queue.get_current_season()", dsa: "Queue State Reading" },
+            { file: "hierarchical_tree_and_traversals.py", fn: "quest_tree.get_current_req(season)", dsa: "Tree Lookup" },
+            { file: "hash.py", fn: "inventory_hash.get(key) / consume(key)", dsa: "Hash Table Linear Probing" },
+            { file: "hierarchical_tree_and_traversals.py", fn: "quest_tree.add_exp(exp)", dsa: "Parent-Child Node Traversal" }
+        ]);
     }
 
     addCoins(payout);
@@ -155,7 +161,12 @@ True
     addCoins(-cost);
     selectInventoryItem(FERTILIZER_KEY);
     updateStatusUI();
-    logConsole(`Purchased ${FERTILIZER_KEY} for ${cost} Coins!`);
+    logConsole(`Purchased ${FERTILIZER_KEY}`);
+
+    logPythonTrace("Purchased Fertilizer", [
+        { file: "hash.py", fn: "inventory_hash.add(FERTILIZER_KEY, item)", dsa: "Linear Probing Hash Table Insertion" },
+        { file: "oop_concepts.py", fn: "Fertilizer Item Lookup", dsa: "Static Property Encapsulation" }
+    ]);
 }
 
 function buyMysteryBag(tier, cost) {
@@ -212,7 +223,14 @@ True
     addCoins(-cost);
     selectInventoryItem(seedKey);
     updateStatusUI();
-    logConsole(`Purchased Tier ${safeTier} Mystery Seed Bag for ${cost} Coins! Received: ${seedKey}!`);
+     logConsole(`T${safeTier} Bag rolled ${seedKey} [cost: ${cost}]`);
+
+    logPythonTrace("Bought Mystery Seed Bag & Rolled Seed", [
+        { file: "queue.py", fn: "climate_queue.get_current_season()", dsa: "FIFO Queue State Query" },
+        { file: "paradigms.py", fn: "buy_seasonal_mystery_bag(tier, season)", dsa: "Greedy Probabilistic Bag Roll" },
+        { file: "oop_concepts.py", fn: "CROP_DATABASE.values() Lookup", dsa: "Object Property Matching" },
+        { file: "hash.py", fn: "inventory_hash.add(seedKey, item)", dsa: "Hash Table Insertion" }
+    ]);
 }
 
 function renderShopSeasonalCrops() {

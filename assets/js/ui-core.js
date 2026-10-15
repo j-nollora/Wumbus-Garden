@@ -36,7 +36,7 @@ function onPyodideReady() {
     updateStatusUI();
     window.syncPythonToUI();
     updateCodeViewer();
-    logConsole('Python engine ready. Pick a tool and click a tile!');
+    logConsole('Python engine ready. View Mechanics.');
 }
 window.onPyodideReady = onPyodideReady;
 
@@ -145,14 +145,31 @@ function switchTab(name) {
         }
         if (panel) panel.hidden = !on;
     });
+
+    // SQA Function Call Trace
+    if (name === 'quests') {
+        logPythonTrace("Opened Quests View", [
+            { file: "hierarchical_tree_and_traversals.py", fn: "quest_tree.get_current_quest_desc()", dsa: "Tree Pointer Traversal" }
+        ]);
+    } else if (name === 'shop') {
+        logPythonTrace("Opened Shop View", [
+            { file: "queue.py", fn: "climate_queue.get_current_season()", dsa: "FIFO Queue Inspection" },
+            { file: "oop_concepts.py", fn: "CROP_DATABASE.values()", dsa: "Static Registry Iteration" }
+        ]);
+    } else if (name === 'sell') {
+        logPythonTrace("Opened Sell View", [
+            { file: "hash.py", fn: "inventory_hash.to_list()", dsa: "Hash Table Array Serialization" }
+        ]);
+    }
 }
 
 function logConsole(msg) {
     const el = document.getElementById('output-console');
     if (!el) return;
-    const lines = `> ${msg}\n${el.textContent}`.split('\n');
-    el.textContent = lines.slice(0, MAX_LOG_LINES).join('\n');
+    el.textContent = `${msg}`;
+    el.title = msg; // Native hover tooltip fallback
 }
+window.logConsole = logConsole;
 
 function openModal(id) {
     if (id === 'shop-modal') renderShopSeasonalCrops();
@@ -204,3 +221,52 @@ function formatSeason(text) {
     const m = String(text || '').match(/^(\S+)\s*\(Day\s*(\d+)\)/i);
     return m ? `${m[1]} ${String(m[2]).padStart(2, '0')}` : text;
 }
+
+// Tab switcher for Action Log vs Function Trace View
+function switchLogTab(tabName) {
+    const actionsTab = document.getElementById('log-tab-actions');
+    const traceTab = document.getElementById('log-tab-trace');
+    const consoleBox = document.getElementById('output-console');
+    const traceBox = document.getElementById('trace-console');
+
+    if (tabName === 'actions') {
+        if (actionsTab) actionsTab.classList.add('active');
+        if (traceTab) traceTab.classList.remove('active');
+        if (consoleBox) consoleBox.hidden = false;
+        if (traceBox) traceBox.hidden = true;
+    } else {
+        if (traceTab) traceTab.classList.add('active');
+        if (actionsTab) actionsTab.classList.remove('active');
+        if (traceBox) traceBox.hidden = false;
+        if (consoleBox) consoleBox.hidden = true;
+    }
+}
+window.switchLogTab = switchLogTab;
+
+/**
+ * Dynamically records and renders Python function traces for any triggered action
+ * @param {string} actionTitle - Name of the action (e.g., "Day Advance", "Till Soil")
+ * @param {Array<{fn: string, file: string, dsa: string}>} calls - List of executed python functions
+ */
+// Appends Python function traces live to the right-side panel
+function logPythonTrace(actionTitle, calls) {
+    const traceBox = document.getElementById('trace-console');
+    if (!traceBox) return;
+
+    let traceHTML = `<div style="color: #f59e0b; font-weight: bold; margin-bottom: 6px; border-bottom: 1px dashed rgba(245, 158, 11, 0.4); padding-bottom: 2px;">▶ [ACTION]: ${escapeHtml(actionTitle)}</div>`;
+    traceHTML += `<ul style="list-style-type: none; padding-left: 4px; margin: 0 0 8px 0; line-height: 1.6;">`;
+
+    calls.forEach(call => {
+        traceHTML += `<li style="margin-bottom: 4px;">
+            <span style="color: #a7f3d0; font-weight: bold;">📁 ${escapeHtml(call.file)}</span> 
+            <span style="color: #f3f4f6;">➔ ⚙️ <code style="color: #fef08a;">${escapeHtml(call.fn)}</code></span>
+            ${call.dsa ? `<br><span style="font-size: 0.7rem; color: #cbd5e1; background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px; margin-left: 20px;">💡 ${escapeHtml(call.dsa)}</span>` : ''}
+        </li>`;
+    });
+
+    traceHTML += `</ul>`;
+
+    // Append new trace at top of right panel
+    traceBox.innerHTML = traceHTML + traceBox.innerHTML;
+}
+window.logPythonTrace = logPythonTrace;

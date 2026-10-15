@@ -20,6 +20,7 @@
                     <h1>Wumbus' Garden</h1>
                     <span class="version">v0.0.0</span>
                 </div>
+                
                 <div class="menu-buttons">
                     <button type="button" class="round-btn" onclick="openModal('mechanics-modal')" title="Mechanics" aria-label="Mechanics">
                         <img src="https://stardewvalleywiki.com/mediawiki/images/d/df/Book_of_Mysteries.png" alt="">
@@ -29,6 +30,8 @@
                     </button>
                 </div>
             </div>
+
+            
 
             <div class="stat-strip">
                 <button type="button" id="well-btn" class="stat-card well-card" onclick="refillWaterAtWell()" title="Select the Water Can, then click the Well to refill (10 energy)">
@@ -54,6 +57,7 @@
                     <span class="sr-only">Coins</span>
                 </div>
             </div>
+            
         </header>
 
         <!-- Board: left rail | garden | right column -->
@@ -70,6 +74,7 @@
                         <img id="weather-icon" src="https://stardewvalleywiki.com/mediawiki/images/2/26/SunAnimated.gif" alt="">
                         <span id="stat-weather">Sunny</span>
                     </div>
+                    <span id="aoe-status" class="aoe-status">Tool Tier: Single Tile (1x1)</span>
                 </div>
 
                 <div class="rail">
@@ -100,24 +105,35 @@
                 </div>
             </section>
 
-            <!-- Center: End Day tab attached to the 5x5 soil grid -->
+            
+
             <section class="garden-col" aria-label="Garden">
+                <!-- Top Header: Dedicated Action Log Banner -->
                 <div class="garden-head">
+                    <div id="output-console" class="action-banner-log" role="log" aria-live="polite">
+                        &gt; Python engine ready. Pick a tool and click a tile!
+                    </div>
+                </div>
+
+                <!-- Interactive 5x5 Soil Grid Matrix -->
+                <div id="soil-grid" class="soil-matrix-grid" role="grid" aria-label="Soil matrix, 5 by 5"></div>
+
+                <!-- Bottom Footer: End Day Button + Tool Tier Status -->
+                <div class="garden-foot">
                     <button type="button" class="end-day-btn" onclick="advanceNextDay()">
                         <img src="https://stardewvalleywiki.com/mediawiki/images/archive/f/f4/20160305091000%21Solar_Essence.png" alt="">
                         <span>End Day</span>
                     </button>
-                    <span id="aoe-status" class="aoe-status">Tool Tier: Single Tile (1x1)</span>
                 </div>
-                <div id="soil-grid" class="soil-matrix-grid" role="grid" aria-label="Soil matrix, 5 by 5"></div>
             </section>
 
             <!-- Right: action log on top, Quests / Shop / Sell tabs below -->
             <section class="right-col" aria-label="Log and town">
                 <div class="log-panel">
-                    <h2 class="panel-title">&gt;_ Execution &amp; Action Log</h2>
-                    <div id="output-console" class="console" role="log" aria-live="polite">
-                        Initializing WASM Python Engine...
+                    <h2 class="panel-title">> Execution &amp; Function Trace Log</h2>
+                    <!-- Dedicated Trace Panel (No switching needed) -->
+                    <div id="trace-console" class="console" role="log" aria-live="polite">
+                        <em>Waiting for user or system action...</em>
                     </div>
                 </div>
 
